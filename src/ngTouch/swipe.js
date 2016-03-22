@@ -35,6 +35,12 @@ ngTouch.factory('$swipe', [function() {
       move: 'touchmove',
       end: 'touchend',
       cancel: 'touchcancel'
+    },
+    'pointer': {
+      start: 'pointerdown',
+      move: 'pointermove',
+      end: 'pointerup',
+      cancel: 'pointercancel'
     }
   };
 
@@ -49,15 +55,20 @@ ngTouch.factory('$swipe', [function() {
     };
   }
 
-  function getEvents(pointerTypes, eventType) {
+  function getEvents(pointerEventApis, eventType) {
     var res = [];
-    angular.forEach(pointerTypes, function(pointerType) {
+    angular.forEach(pointerEventApis, function(pointerType) {
       var eventName = POINTER_EVENTS[pointerType][eventType];
       if (eventName) {
         res.push(eventName);
       }
     });
     return res.join(' ');
+  }
+
+  function eventFromMouseAndPointerAPI(event) {
+    var pointerType = event.pointerType || (event.originalEvent && event.originalEvent.pointerType);
+    return pointerType === 'mouse';
   }
 
   return {
@@ -104,8 +115,18 @@ ngTouch.factory('$swipe', [function() {
       // Whether a swipe is active.
       var active = false;
 
-      pointerTypes = pointerTypes || ['mouse', 'touch'];
-      element.on(getEvents(pointerTypes, 'start'), function(event) {
+      // Whether event from mouse action should be listened or not
+      var noMouse = !pointerTypes || pointerTypes.indexOf('mouse') === -1;
+
+      var pointerEventApis = pointerTypes || ['mouse', 'touch'];
+
+
+      //IE 11 and edge does not implements touch events but pointer events
+      pointerEventApis.push('pointer');
+
+      element.on(getEvents(pointerEventApis, 'start'), function(event) {
+        //pointer events trigger both for mouse and touch actions
+        if (noMouse && eventFromMouseAndPointerAPI(event)) return;
         startCoords = getCoordinates(event);
         active = true;
         totalX = 0;
@@ -113,7 +134,7 @@ ngTouch.factory('$swipe', [function() {
         lastPos = startCoords;
         eventHandlers['start'] && eventHandlers['start'](startCoords, event);
       });
-      var events = getEvents(pointerTypes, 'cancel');
+      var events = getEvents(pointerEventApis, 'cancel');
       if (events) {
         element.on(events, function(event) {
           active = false;
@@ -121,8 +142,8 @@ ngTouch.factory('$swipe', [function() {
         });
       }
 
-      element.on(getEvents(pointerTypes, 'move'), function(event) {
-        if (!active) return;
+      element.on(getEvents(pointerEventApis, 'move'), function(event) {
+        if (!active || noMouse && eventFromMouseAndPointerAPI(event)) return;
 
         // Android will send a touchcancel if it thinks we're starting to scroll.
         // So when the total distance (+ or - or both) exceeds 10px in either direction,
@@ -155,7 +176,7 @@ ngTouch.factory('$swipe', [function() {
         }
       });
 
-      element.on(getEvents(pointerTypes, 'end'), function(event) {
+      element.on(getEvents(pointerEventApis, 'end'), function(event) {
         if (!active) return;
         active = false;
         eventHandlers['end'] && eventHandlers['end'](getCoordinates(event), event);
@@ -163,5 +184,3 @@ ngTouch.factory('$swipe', [function() {
     }
   };
 }]);
-
-

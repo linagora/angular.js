@@ -23,9 +23,11 @@ describe('$swipe', function() {
 
   describe('pointerTypes', function() {
     var usedEvents;
-    var MOUSE_EVENTS = ['mousedown','mousemove','mouseup'].sort();
-    var TOUCH_EVENTS = ['touchcancel','touchend','touchmove','touchstart'].sort();
+    var POINTER_EVENTS = ['pointerdown', 'pointerup', 'pointermove', 'pointercancel'];
+    var TOUCH_EVENTS = ['touchcancel','touchend','touchmove','touchstart'].concat(POINTER_EVENTS).sort();
+    var MOUSE_EVENTS = ['mousedown','mousemove','mouseup'];
     var ALL_EVENTS = MOUSE_EVENTS.concat(TOUCH_EVENTS).sort();
+    MOUSE_EVENTS = MOUSE_EVENTS.concat(POINTER_EVENTS).sort();
 
     beforeEach(function() {
       usedEvents = [];
@@ -59,6 +61,7 @@ describe('$swipe', function() {
   });
 
   swipeTests('touch', /* restrictBrowers */ true, 'touchstart', 'touchmove', 'touchend');
+  swipeTests('pointer', /* restrictBrowers */ false, 'pointerdown', 'pointermove', 'pointerup');
   swipeTests('mouse', /* restrictBrowers */ false, 'mousedown',  'mousemove', 'mouseup');
 
   // Wrapper to abstract over using touch events or mouse events.
@@ -374,4 +377,62 @@ describe('$swipe', function() {
     });
   }
 
+  describe('ignoring mouse events when using pointer API for touch only event', function() {
+    it('should not trigger start when event is from mouse', inject(function($swipe) {
+      $swipe.bind(element, events, ['touch']);
+
+      expect(events.start).not.toHaveBeenCalled();
+      expect(events.move).not.toHaveBeenCalled();
+      expect(events.cancel).not.toHaveBeenCalled();
+      expect(events.end).not.toHaveBeenCalled();
+
+      browserTrigger(element, 'pointerdown',{
+        keys: [],
+        pointerType: 'mouse',
+        x: 100,
+        y: 20
+      });
+
+      expect(events.start).not.toHaveBeenCalled();
+
+      expect(events.move).not.toHaveBeenCalled();
+      expect(events.cancel).not.toHaveBeenCalled();
+      expect(events.end).not.toHaveBeenCalled();
+    }));
+  });
+
+  it('should not trigger move when event is from mouse', inject(function($swipe) {
+    $swipe.bind(element, events, ['touch']);
+
+    expect(events.start).not.toHaveBeenCalled();
+    expect(events.move).not.toHaveBeenCalled();
+    expect(events.cancel).not.toHaveBeenCalled();
+    expect(events.end).not.toHaveBeenCalled();
+
+    browserTrigger(element, 'pointerdown',{
+      keys: [],
+      pointerType: 'touch',
+      x: 100,
+      y: 20
+    });
+
+    expect(events.start).toHaveBeenCalled();
+
+    expect(events.move).not.toHaveBeenCalled();
+    expect(events.cancel).not.toHaveBeenCalled();
+    expect(events.end).not.toHaveBeenCalled();
+
+    browserTrigger(element, 'pointermove',{
+      keys: [],
+      pointerType: 'mouse',
+      x: 140,
+      y: 20
+    });
+
+    expect(events.start).toHaveBeenCalled();
+    expect(events.move).not.toHaveBeenCalled();
+
+    expect(events.cancel).not.toHaveBeenCalled();
+    expect(events.end).not.toHaveBeenCalled();
+  }));
 });

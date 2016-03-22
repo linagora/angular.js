@@ -86,6 +86,10 @@
       y = y || 0;
       evnt.initMouseEvent(eventType, true, true, window, 0, x, y, x, y, pressed('ctrl'),
           pressed('alt'), pressed('shift'), pressed('meta'), 0, relatedTarget);
+
+      if (eventData && eventData.pointerType) {
+        evnt.pointerType = eventData.pointerType;
+      }
     }
 
     /* we're unable to change the timeStamp value directly so this
